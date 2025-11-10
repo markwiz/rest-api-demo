@@ -1,78 +1,46 @@
-console.log("index.js started ✅");
 const express = require('express');
 const cors = require('cors');
-
 const app = express();
 
-app.use(cors());
-app.use(express.json()); // ← CALL IT!
+app.use(cors());        // Avoid CORS errors in browsers
+app.use(express.json()) // Populate req.body
 
-// In-memory data
-const thingamabobs = [
-  { id: 1, name: "plumbus",    price: 34.59 },
-  { id: 2, name: "vana furby", price: 666 },
-  { id: 3, name: "sapakas",    price: 2000 }
-];
+const widgets = [
+    { id: 1, name: "Cizzbor", price: 29.99 },
+    { id: 2, name: "Woowo", price: 26.99 },
+    { id: 3, name: "Crazlinger", price: 59.99 },
+]
 
-// Simple id generator that survives deletes
-let nextId = Math.max(0, ...thingamabobs.map(t => t.id)) + 1;
-
-// Optional friendly root so a browser shows *something*
-app.get('/', (_req, res) => {
-  res.type('text/plain').send('API is up. Try GET /thingamabobs');
+// NEW: simple root route to avoid "Cannot GET /"
+app.get('/', (req, res) => {
+    res.send({ message: 'Widget API up. Try GET /widgets' });
 });
 
-// List
-app.get('/thingamabobs', (_req, res) => {
-  res.json(thingamabobs);
-});
+app.get('/widgets', (req, res) => {
+    res.send(widgets)
+})
 
-// Read one
-app.get('/thingamabobs/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const item = thingamabobs.find(t => t.id === id);
-  if (!item) {
-    return res.status(404).json({ error: "object not found. Check your thingamabobs id" });
-  }
-  res.json(item);
-});
+app.get('/widgets/:id', (req, res) => {
+    if (typeof widgets[req.params.id - 1] === 'undefined') {
+        return res.status(404).send({ error: "Widget not found" })
+    }
+    res.send(widgets[req.params.id - 1])
+})
 
-// Create
-app.post('/thingamabobs', (req, res) => {
-  const { name, price } = req.body || {};
-  if (!name || price == null) {
-    return res.status(400).json({ error: "One or multiple parameters missing" });
-  }
-  const newThingy = { id: nextId++, name, price };
-  thingamabobs.push(newThingy);
-  res
-    .status(201)
-    .location(`/thingamabobs/${newThingy.id}`)
-    .json(newThingy);
-});
-
-// Delete
-app.delete('/thingamabobs/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const idx = thingamabobs.findIndex(t => t.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ error: "object not found. Check your thingamabobs id" });
-  }
-  thingamabobs.splice(idx, 1);
-  res.status(204).end(); // 204 has no body
-});
-
-// 404 fallback (for any other route)
-app.use((req, res) => {
-  res.status(404).json({ error: "Not found", path: req.originalUrl });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('❌', err);
-  res.status(500).json({ error: "Internal error" });
-});
+app.post('/widgets', (req, res) => {
+    if (!req.body.name || !req.body.price) {
+        return res.status(400).send({ error: 'One or all params are missing' })
+    }
+    let newWidget = {
+        id: widgets.length + 1,
+        price: req.body.price,
+        name: req.body.name
+    }
+    widgets.push(newWidget)
+    // FIX: point Location to the new resource by its real id
+    res.status(201).location('/widgets/' + newWidget.id).send(newWidget)
+})
 
 app.listen(8080, () => {
-  console.log(`API running at: http://localhost:8080`);
-});
+    console.log(`API up at: http://localhost:8080`)
+})
